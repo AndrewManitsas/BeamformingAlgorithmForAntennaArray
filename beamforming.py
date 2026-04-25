@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
@@ -195,40 +196,143 @@ def extract_deviations_and_sll(theta_scan, P_dB, theta_desired, theta_interferer
         
     return delta_theta_0, delta_theta_nulls, sll_db
 
-# --- Quick Test ---
+def optimize_dummy_interferers(theta_desired, theta_interferers, max_dummies=18, target_sll=-20.0):
+    """
+    Iteratively places dummy interferers at the highest side lobes 
+    until the SLL drops below the target, or max_dummies is reached.
+    """
+    current_dummies = []
+    
+    for iteration in range(max_dummies):
+        # 1. Combine real interferers with current dummies
+        all_interferers = theta_interferers + current_dummies
+        
+        # 2. Calculate current weights and pattern
+        w = calculate_nsb_weights(theta_desired, all_interferers)
+        angles, P_dB = compute_pattern(w)
+        
+        # 3. Find all peaks in the current pattern
+        peaks, _ = find_peaks(P_dB)
+        
+        # Mask out the main lobe (roughly +/- 10 degrees from the desired signal)
+        main_lobe_mask = (angles[peaks] > theta_desired - 10) & (angles[peaks] < theta_desired + 10)
+        side_lobe_peaks = peaks[~main_lobe_mask]
+        
+        if len(side_lobe_peaks) == 0:
+            break # No side lobes left to target
+            
+        # 4. Identify the worst offender (highest side lobe)
+        highest_peak_idx = side_lobe_peaks[np.argmax(P_dB[side_lobe_peaks])]
+        worst_sll_val = P_dB[highest_peak_idx]
+        worst_sll_angle = angles[highest_peak_idx]
+        
+        # 5. Check if we met the target constraint
+        if worst_sll_val <= target_sll:
+            # Target met! Exit the control loop early.
+            break
+            
+        # 6. Target not met: Add a dummy at the exact angle of the worst side lobe
+        current_dummies.append(worst_sll_angle)
+        
+    # --- Final Polish ---
+    # Calculate the definitive weight vector using all accumulated dummies
+    final_interferers = theta_interferers + current_dummies
+    final_w = calculate_nsb_weights(theta_desired, final_interferers)
+    
+    return final_w, current_dummies
+
+def generate_scenarios(delta):
+    """
+    Generates the list of (theta_0, interferers) tuples per the assignment rules.
+    """
+    scenarios = []
+    base_start = 30
+    
+    # Continue until the highest angle in the set exceeds 150 degrees
+    while base_start + 5 * delta <= 150:
+        # Create the base set of 6 angles
+        base_angles = [base_start + i * delta for i in range(6)]
+        
+        # Rotate each angle to act as the desired signal
+        for i in range(6):
+            theta_0 = base_angles[i]
+            # The other 5 angles are the interferers
+            interferers = base_angles[:i] + base_angles[i+1:]
+            scenarios.append((theta_0, interferers))
+            
+        base_start += 1
+        
+    return scenarios
+
+def run_master_simulation():
+    """
+    Executes the full batch simulation for all SNRs and Deltas,
+    and computes the required statistical metrics.
+    """
+    snr_values = [-10, 0, 10, 20]
+    delta_values = [6, 8, 10, 12, 14, 16]
+    
+    print("Starting Master Simulation...")
+    print("This will take a few minutes depending on your CPU. Grab a coffee.\n")
+    
+    start_time = time.time()
+    
+    for snr in snr_values:
+        print(f"================ SNR = {snr} dB ================")
+        
+        for delta in delta_values:
+            scenarios = generate_scenarios(delta)
+            
+            # Arrays to hold the results for this specific (SNR, Delta) combo
+            all_delta_theta_0 = []
+            all_delta_theta_nulls = []
+            all_sinr = []
+            all_sll = []
+            
+            for theta_0, interferers in scenarios:
+                # 1. Optimize dummy placement to meet SLL target
+                w_opt, active_dummies = optimize_dummy_interferers(
+                    theta_0, interferers, max_dummies=18, target_sll=-20.0
+                )
+                
+                # 2. Compute pattern
+                all_int = interferers + active_dummies
+                angles, P_dB = compute_pattern(w_opt)
+                
+                # 3. Extract metrics
+                dt0, dtnulls, sll = extract_deviations_and_sll(angles, P_dB, theta_0, all_int)
+                sinr_val = calculate_sinr(w_opt, theta_0, interferers, snr)
+                
+                # 4. Store metrics
+                all_delta_theta_0.append(dt0)
+                all_delta_theta_nulls.extend(dtnulls) # extend flattens the list of 5 nulls
+                all_sinr.append(sinr_val)
+                all_sll.append(sll)
+            
+            # --- Compute Statistics for this combination ---
+            # Using numpy to easily calculate min, max, mean, std
+            dt0_stats = [np.min(all_delta_theta_0), np.max(all_delta_theta_0), 
+                         np.mean(all_delta_theta_0), np.std(all_delta_theta_0)]
+                         
+            dtn_stats = [np.min(all_delta_theta_nulls), np.max(all_delta_theta_nulls), 
+                         np.mean(all_delta_theta_nulls), np.std(all_delta_theta_nulls)]
+                         
+            sinr_stats = [np.min(all_sinr), np.max(all_sinr), 
+                          np.mean(all_sinr), np.std(all_sinr)]
+                          
+            sll_stats = [np.min(all_sll), np.max(all_sll), 
+                         np.mean(all_sll), np.std(all_sll)]
+            
+            # --- Print formatted output for easy copy-pasting to Word ---
+            print(f"--- Delta = {delta}° ---")
+            print(f"Δθ0 [deg] : Min: {dt0_stats[0]:.3f} | Max: {dt0_stats[1]:.3f} | Mean: {dt0_stats[2]:.3f} | Std: {dt0_stats[3]:.3f}")
+            print(f"Δθn [deg] : Min: {dtn_stats[0]:.3f} | Max: {dtn_stats[1]:.3f} | Mean: {dtn_stats[2]:.3f} | Std: {dtn_stats[3]:.3f}")
+            print(f"SINR [dB] : Min: {sinr_stats[0]:.3f} | Max: {sinr_stats[1]:.3f} | Mean: {sinr_stats[2]:.3f} | Std: {sinr_stats[3]:.3f}")
+            print(f"SLL  [dB] : Min: {sll_stats[0]:.3f} | Max: {sll_stats[1]:.3f} | Mean: {sll_stats[2]:.3f} | Std: {sll_stats[3]:.3f}\n")
+            
+    total_time = time.time() - start_time
+    print(f"Simulation Complete! Total execution time: {total_time/60:.1f} minutes.")
+
+# --- Execute ---
 if __name__ == "__main__":
-    # --- Test Parameters ---
-    theta_0 = 90
-    interferers = [60, 120, 150] # Just 3 interferers for this quick test
-    snr_test_db = 10
-    
-    print("--- Testing NSB Beamformer Extraction ---")
-    print(f"Desired Angle: {theta_0}°")
-    print(f"Interference Angles: {interferers}°")
-    print(f"SNR: {snr_test_db} dB\n")
-    
-    # 1. Calculate Weights
-    weights = calculate_nsb_weights(theta_0, interferers)
-    
-    # 2. Calculate SINR
-    sinr = calculate_sinr(weights, theta_0, interferers, snr_test_db)
-    print(f"Calculated SINR: {sinr:.3f} dB")
-    
-    # 3. Compute Pattern
-    angles, pattern_dB = compute_pattern(weights)
-    
-    # 4. Extract Metrics
-    delta_theta_0, delta_theta_nulls, sll = extract_deviations_and_sll(
-        angles, pattern_dB, theta_0, interferers
-    )
-    
-    print(f"Main Lobe Deviation (Δθ0): {delta_theta_0:.3f}°")
-    
-    # Formatting the list of null deviations for clean printing
-    formatted_nulls = [f"{d:.3f}" for d in delta_theta_nulls]
-    print(f"Null Deviations (Δθ_int): {formatted_nulls}°")
-    
-    print(f"Maximum SLL: {sll:.3f} dB")
-    
-    # 5. Plot the Pattern
-    plot_pattern(angles, pattern_dB, theta_0, interferers)
+    run_master_simulation()
