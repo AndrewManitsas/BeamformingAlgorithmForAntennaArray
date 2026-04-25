@@ -6,7 +6,7 @@ The software simulates a 24-element uniform linear antenna array. It calculates 
 
 ## File Architecture
 
-To maintain a clean, embedded-style structure, the codebase is modularized into five distinct Python files:
+To maintain a clean codebase it is modularized into five distinct Python files:
 
 * **`array_math.py`** *The core RF physics engine.* Handles the generation of steering vectors, construction of the constraint matrix, calculation of the complex weight vector via pseudo-inversion, and computation of the complete 180° radiation pattern.
 
