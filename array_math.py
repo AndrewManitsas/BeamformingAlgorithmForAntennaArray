@@ -1,5 +1,6 @@
 # ==============================================================================
-# Title:       Simulation of a Null Steering Beamformer (NSB), developed for the Advanced RF Aspects of UAVs MSc course
+# Title:       Simulation of a Null Steering (NSB) and the Minimum Variance Distortionless Response (MVDR) beamforming algorithms,
+#              developed for the Advanced RF Aspects of UAVs MSc course (UAV15)
 #
 # Author:      Andreas Manitsas
 # Email:       amanitsb@ece.auth.gr
@@ -10,11 +11,11 @@
 # Term:        2025-2026
 #
 # Description: The software simulates a 24-element uniform linear antenna array.
-#              It calculates complex weights to steer the main lobe toward a desired
-#              signal while forcing mathematical nulls at the angles of incoming
-#              interference signals. To meet strict Side Lobe Level (SLL) constraints,
-#              it utilizes an iterative peak-nulling algorithm to strategically place
-#              artificial "dummy" interferers.
+#              Depending on the selected algorithm, it calculates complex weights to
+#              steer the main lobe toward a desired signal while suppressing incoming
+#              interference signals (either through deterministic mathematical nulls or
+#              statistical spatial covariance). To meet strict Side Lobe Level (SLL) constraints -20 dB,
+#              it utilizes an iterative peak-nulling algorithm to strategically place artificial "dummy" interferers.
 #
 # Disclaimer:  AI assistance may have been used during development
 # ==============================================================================
@@ -41,6 +42,34 @@ def calculate_nsb_weights(theta_desired, theta_interferers, M=24, d_lambda=0.5):
     
     C_H = C.conj().T
     w = np.linalg.pinv(C_H) @ g
+    return w
+
+def calculate_mvdr_weights(theta_desired, theta_interferers, snr_db, M=24, d_lambda=0.5):
+    """Calculates the Minimum Variance Distortionless Response (MVDR) complex weights."""
+    v_0 = steering_vector(theta_desired, M, d_lambda)
+    
+    # 1. Calculate Noise Power Variance
+    sigma_n2 = 10 ** (-snr_db / 10)
+    
+    # 2. Construct the spatial covariance matrix (R)
+    # CRITICAL FIX: Explicitly set dtype to complex so numpy can add the steering vectors
+    R = sigma_n2 * np.eye(M, dtype=complex)
+    
+    # Add the desired signal covariance
+    R += v_0 @ v_0.conj().T
+    
+    # Add the interference signal covariances
+    for theta_i in theta_interferers:
+        v_i = steering_vector(theta_i, M, d_lambda)
+        R += v_i @ v_i.conj().T
+        
+    # 3. Calculate MVDR weights: w = (R^-1 * v_0) / (v_0^H * R^-1 * v_0)
+    R_inv = np.linalg.pinv(R)
+    
+    numerator = R_inv @ v_0
+    denominator = v_0.conj().T @ R_inv @ v_0
+    
+    w = numerator / denominator
     return w
 
 def compute_pattern(w, M=24, d_lambda=0.5):

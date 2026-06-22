@@ -1,5 +1,6 @@
 # ==============================================================================
-# Title:       Simulation of a Null Steering Beamformer (NSB), developed for the Advanced RF Aspects of UAVs MSc course
+# Title:       Simulation of a Null Steering (NSB) and the Minimum Variance Distortionless Response (MVDR) beamforming algorithms,
+#              developed for the Advanced RF Aspects of UAVs MSc course (UAV15)
 #
 # Author:      Andreas Manitsas
 # Email:       amanitsb@ece.auth.gr
@@ -10,11 +11,11 @@
 # Term:        2025-2026
 #
 # Description: The software simulates a 24-element uniform linear antenna array.
-#              It calculates complex weights to steer the main lobe toward a desired
-#              signal while forcing mathematical nulls at the angles of incoming
-#              interference signals. To meet strict Side Lobe Level (SLL) constraints,
-#              it utilizes an iterative peak-nulling algorithm to strategically place
-#              artificial "dummy" interferers.
+#              Depending on the selected algorithm, it calculates complex weights to
+#              steer the main lobe toward a desired signal while suppressing incoming
+#              interference signals (either through deterministic mathematical nulls or
+#              statistical spatial covariance). To meet strict Side Lobe Level (SLL) constraints -20 dB,
+#              it utilizes an iterative peak-nulling algorithm to strategically place artificial "dummy" interferers.
 #
 # Disclaimer:  AI assistance may have been used during development
 # ==============================================================================

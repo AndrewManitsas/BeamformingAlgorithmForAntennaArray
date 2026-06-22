@@ -5,3 +5,4 @@ base_start,30,The starting angle for scenario generation
 max_angle,150,The maximum angle limit for scenario generation
 target_sll,-20.0,The target Side Lobe Level constraint (in dB)
 max_dummies,18,Maximum number of artificial interferers allowed
+beamformer_type,nsb,Set to 'nsb' or 'mvdr'

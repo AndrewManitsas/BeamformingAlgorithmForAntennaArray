@@ -1,3 +1,25 @@
+# ==============================================================================
+# Title:       Simulation of a Null Steering (NSB) and the Minimum Variance Distortionless Response (MVDR) beamforming algorithms,
+#              developed for the Advanced RF Aspects of UAVs MSc course (UAV15)
+#
+# Author:      Andreas Manitsas
+# Email:       amanitsb@ece.auth.gr
+# 
+# Course:      UAV15 Advanced RF Aspects of UAVs
+# Program:     MSc Aerial Autonomous Systems
+# Institution: Aristotle University of Thessaloniki, Faculty of Polytechnics
+# Term:        2025-2026
+#
+# Description: The software simulates a 24-element uniform linear antenna array.
+#              Depending on the selected algorithm, it calculates complex weights to
+#              steer the main lobe toward a desired signal while suppressing incoming
+#              interference signals (either through deterministic mathematical nulls or
+#              statistical spatial covariance). To meet strict Side Lobe Level (SLL) constraints -20 dB,
+#              it utilizes an iterative peak-nulling algorithm to strategically place artificial "dummy" interferers.
+#
+# Disclaimer:  AI assistance may have been used during development
+# ==============================================================================
+
 import time
 import numpy as np
 import os
@@ -29,9 +51,11 @@ def load_config(filename="config.csv"):
                 val = row[1].strip()
                 config[key] = val
                 
-    # Parse the string lists into Python lists of numbers
     snr_list = [float(x) for x in config['snr_values'].replace('"', '').split(',')]
     delta_list = [int(x) for x in config['delta_values'].replace('"', '').split(',')]
+    
+    # Fallback to 'nsb' if the user forgets to add it to the CSV
+    beamformer = config.get('beamformer_type', 'nsb').strip().lower()
     
     return {
         'snr_values': snr_list,
@@ -39,7 +63,8 @@ def load_config(filename="config.csv"):
         'base_start': int(config['base_start']),
         'max_angle': int(config['max_angle']),
         'target_sll': float(config['target_sll']),
-        'max_dummies': int(config['max_dummies'])
+        'max_dummies': int(config['max_dummies']),
+        'beamformer_type': beamformer
     }
 
 def generate_scenarios(delta, base_start, max_angle):
@@ -67,8 +92,9 @@ def run_master_simulation():
         
     snr_values = cfg['snr_values']
     delta_values = cfg['delta_values']
+    bf_type = cfg['beamformer_type'].upper()
     
-    print("Starting Master Simulation...")
+    print(f"Starting Master Simulation using {bf_type} Beamformer...")
     if SAVE_PLOTS:
         print("WARNING: Plot saving is ENABLED. This will generate thousands of images.")
         print("Execution will take significantly longer due to disk I/O.\n")
@@ -76,6 +102,7 @@ def run_master_simulation():
     start_time = time.time()
     
     with open("simulation_results.txt", "w", encoding="utf-8") as file:
+        file.write(f"Beamforming Algorithm Used: {bf_type} --> Simulation Results\n")
         file.write("================================================\n\n")
         
         for snr in snr_values:
@@ -84,7 +111,6 @@ def run_master_simulation():
             file.write(header + "\n")
             
             for delta in delta_values:
-                # Pass the dynamically loaded boundaries here
                 scenarios = generate_scenarios(delta, cfg['base_start'], cfg['max_angle'])
                 
                 all_delta_theta_0 = []
@@ -93,9 +119,11 @@ def run_master_simulation():
                 all_sll = []
                 
                 for idx, (theta_0, interferers) in enumerate(scenarios):
-                    # Pass the dynamically loaded algorithmic constraints here
+                    # Pass the beamformer type and SNR to the optimization loop
                     w_opt, active_dummies = optimize_dummy_interferers(
                         theta_0, interferers, 
+                        beamformer_type=cfg['beamformer_type'],
+                        snr_db=snr,
                         max_dummies=cfg['max_dummies'], 
                         target_sll=cfg['target_sll']
                     )
@@ -112,7 +140,7 @@ def run_master_simulation():
                     all_sll.append(sll)
                     
                     if SAVE_PLOTS:
-                        folder_path = os.path.join("plots", f"SNR_{snr}", f"Delta_{delta}")
+                        folder_path = os.path.join("plots", bf_type, f"SNR_{snr}", f"Delta_{delta}")
                         filename = os.path.join(folder_path, f"scenario_{idx:04d}_th0_{theta_0}.png")
                         save_pattern(angles, P_dB, theta_0, all_int, filename)
                 
