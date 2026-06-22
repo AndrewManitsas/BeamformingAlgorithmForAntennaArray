@@ -23,3 +23,8 @@ To maintain a clean codebase, it is modularized into five distinct Python files:
 To run this simulation, you will need Python installed along with the following scientific libraries:
 ```bash
 pip install numpy scipy matplotlib
+
+## How to Run the Simulation
+
+```bash
+python main.py
