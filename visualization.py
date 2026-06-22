@@ -1,3 +1,24 @@
+# ==============================================================================
+# Title:       Simulation of a Null Steering Beamformer (NSB), developed for the Advanced RF Aspects of UAVs MSc course
+#
+# Author:      Andreas Manitsas
+# Email:       amanitsb@ece.auth.gr
+# 
+# Course:      UAV15 Advanced RF Aspects of UAVs
+# Program:     MSc Aerial Autonomous Systems
+# Institution: Aristotle University of Thessaloniki, Faculty of Polytechnics
+# Term:        2025-2026
+#
+# Description: The software simulates a 24-element uniform linear antenna array.
+#              It calculates complex weights to steer the main lobe toward a desired
+#              signal while forcing mathematical nulls at the angles of incoming
+#              interference signals. To meet strict Side Lobe Level (SLL) constraints,
+#              it utilizes an iterative peak-nulling algorithm to strategically place
+#              artificial "dummy" interferers.
+#
+# Disclaimer:  AI assistance may have been used during development
+# ==============================================================================
+
 import os
 import matplotlib.pyplot as plt
 
