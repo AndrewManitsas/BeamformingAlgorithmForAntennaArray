@@ -1,30 +1,9 @@
-# ==============================================================================
-# Title:       Simulation of a Null Steering Beamformer (NSB), developed for the Advanced RF Aspects of UAVs MSc course
-#
-# Author:      Andreas Manitsas
-# Email:       amanitsb@ece.auth.gr
-# 
-# Course:      UAV15 Advanced RF Aspects of UAVs
-# Program:     MSc Aerial Autonomous Systems
-# Institution: Aristotle University of Thessaloniki, Faculty of Polytechnics
-# Term:        2025-2026
-#
-# Description: The software simulates a 24-element uniform linear antenna array.
-#              It calculates complex weights to steer the main lobe toward a desired
-#              signal while forcing mathematical nulls at the angles of incoming
-#              interference signals. To meet strict Side Lobe Level (SLL) constraints,
-#              it utilizes an iterative peak-nulling algorithm to strategically place
-#              artificial "dummy" interferers.
-#
-# Disclaimer:  AI assistance may have been used during development
-# ==============================================================================
-
 import time
 import numpy as np
 import os
+import csv
 
 # CRITICAL: Set matplotlib to 'Agg' (headless mode) BEFORE importing visualization
-# This prevents it from requiring a GUI or crashing during massive batch loops
 import matplotlib
 matplotlib.use('Agg')
 
@@ -34,25 +13,60 @@ from optimization import optimize_dummy_interferers
 from visualization import save_pattern
 
 # --- CONFIGURATION ---
-# Set this to False if you just want the math fast without generating thousands of images
-SAVE_PLOTS = False
+# Set this to False to bypass generating thousands of images
+SAVE_PLOTS = False 
 # ---------------------
 
-def generate_scenarios(delta):
+def load_config(filename="config.csv"):
+    """Reads the master simulation parameters from a CSV file."""
+    config = {}
+    with open(filename, mode='r', encoding='utf-8') as file:
+        reader = csv.reader(file)
+        next(reader)  # Skip the header row
+        for row in reader:
+            if len(row) >= 2:
+                key = row[0].strip()
+                val = row[1].strip()
+                config[key] = val
+                
+    # Parse the string lists into Python lists of numbers
+    snr_list = [float(x) for x in config['snr_values'].replace('"', '').split(',')]
+    delta_list = [int(x) for x in config['delta_values'].replace('"', '').split(',')]
+    
+    return {
+        'snr_values': snr_list,
+        'delta_values': delta_list,
+        'base_start': int(config['base_start']),
+        'max_angle': int(config['max_angle']),
+        'target_sll': float(config['target_sll']),
+        'max_dummies': int(config['max_dummies'])
+    }
+
+def generate_scenarios(delta, base_start, max_angle):
+    """Generates scenario tuples based on dynamically provided boundaries."""
     scenarios = []
-    base_start = 30
-    while base_start + 5 * delta <= 150:
-        base_angles = [base_start + i * delta for i in range(6)]
+    current_start = base_start
+    
+    while current_start + 5 * delta <= max_angle:
+        base_angles = [current_start + i * delta for i in range(6)]
         for i in range(6):
             theta_0 = base_angles[i]
             interferers = base_angles[:i] + base_angles[i+1:]
             scenarios.append((theta_0, interferers))
-        base_start += 1
+        current_start += 1
+        
     return scenarios
 
 def run_master_simulation():
-    snr_values = [-10, 0, 10, 20]
-    delta_values = [6, 8, 10, 12, 14, 16]
+    print("Loading parameters from config.csv...")
+    try:
+        cfg = load_config("config.csv")
+    except FileNotFoundError:
+        print("Error: config.csv not found! Please create it in the same directory.")
+        return
+        
+    snr_values = cfg['snr_values']
+    delta_values = cfg['delta_values']
     
     print("Starting Master Simulation...")
     if SAVE_PLOTS:
@@ -70,17 +84,20 @@ def run_master_simulation():
             file.write(header + "\n")
             
             for delta in delta_values:
-                scenarios = generate_scenarios(delta)
+                # Pass the dynamically loaded boundaries here
+                scenarios = generate_scenarios(delta, cfg['base_start'], cfg['max_angle'])
                 
                 all_delta_theta_0 = []
                 all_delta_theta_nulls = []
                 all_sinr = []
                 all_sll = []
                 
-                # Use enumerate to get a unique index (idx) for our filenames
                 for idx, (theta_0, interferers) in enumerate(scenarios):
+                    # Pass the dynamically loaded algorithmic constraints here
                     w_opt, active_dummies = optimize_dummy_interferers(
-                        theta_0, interferers, max_dummies=18, target_sll=-20.0
+                        theta_0, interferers, 
+                        max_dummies=cfg['max_dummies'], 
+                        target_sll=cfg['target_sll']
                     )
                     
                     all_int = interferers + active_dummies
@@ -94,13 +111,9 @@ def run_master_simulation():
                     all_sinr.append(sinr_val)
                     all_sll.append(sll)
                     
-                    # --- PLOT SAVING LOGIC ---
                     if SAVE_PLOTS:
-                        # Create a clean folder hierarchy: plots/SNR_10/Delta_6/
                         folder_path = os.path.join("plots", f"SNR_{snr}", f"Delta_{delta}")
-                        # Name file logically: e.g., scenario_0042_th0_90.png
                         filename = os.path.join(folder_path, f"scenario_{idx:04d}_th0_{theta_0}.png")
-                        
                         save_pattern(angles, P_dB, theta_0, all_int, filename)
                 
                 # --- Statistics Calculation ---

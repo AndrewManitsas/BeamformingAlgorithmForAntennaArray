@@ -1,0 +1,7 @@
+Parameter,Value,Description
+snr_values,"-10, 0, 10, 20",List of SNRs to test (in dB)
+delta_values,"6, 8, 10, 12, 14, 16",List of angular separations to test (in degrees)
+base_start,30,The starting angle for scenario generation
+max_angle,150,The maximum angle limit for scenario generation
+target_sll,-20.0,The target Side Lobe Level constraint (in dB)
+max_dummies,18,Maximum number of artificial interferers allowed
