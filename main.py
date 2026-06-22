@@ -1,16 +1,25 @@
 import time
 import numpy as np
+import os
 
-# Import our modularized functions
+# CRITICAL: Set matplotlib to 'Agg' (headless mode) BEFORE importing visualization
+# This prevents it from requiring a GUI or crashing during massive batch loops
+import matplotlib
+matplotlib.use('Agg')
+
 from array_math import compute_pattern
 from metrics import calculate_sinr, extract_deviations_and_sll
 from optimization import optimize_dummy_interferers
+from visualization import save_pattern
+
+# --- CONFIGURATION ---
+# Set this to False if you just want the math fast without generating thousands of images
+SAVE_PLOTS = False
+# ---------------------
 
 def generate_scenarios(delta):
-    """Generates the list of (theta_0, interferers) tuples per the assignment rules."""
     scenarios = []
     base_start = 30
-    
     while base_start + 5 * delta <= 150:
         base_angles = [base_start + i * delta for i in range(6)]
         for i in range(6):
@@ -18,19 +27,19 @@ def generate_scenarios(delta):
             interferers = base_angles[:i] + base_angles[i+1:]
             scenarios.append((theta_0, interferers))
         base_start += 1
-        
     return scenarios
 
 def run_master_simulation():
-    """Executes the full batch simulation and computes required statistical metrics."""
     snr_values = [-10, 0, 10, 20]
     delta_values = [6, 8, 10, 12, 14, 16]
     
     print("Starting Master Simulation...")
-    print("Results will be printed here and saved to 'simulation_results.txt'.\n")
+    if SAVE_PLOTS:
+        print("WARNING: Plot saving is ENABLED. This will generate thousands of images.")
+        print("Execution will take significantly longer due to disk I/O.\n")
+        
     start_time = time.time()
     
-    # Open the text file to log the results
     with open("simulation_results.txt", "w", encoding="utf-8") as file:
         file.write("================================================\n\n")
         
@@ -47,7 +56,8 @@ def run_master_simulation():
                 all_sinr = []
                 all_sll = []
                 
-                for theta_0, interferers in scenarios:
+                # Use enumerate to get a unique index (idx) for our filenames
+                for idx, (theta_0, interferers) in enumerate(scenarios):
                     w_opt, active_dummies = optimize_dummy_interferers(
                         theta_0, interferers, max_dummies=18, target_sll=-20.0
                     )
@@ -62,13 +72,22 @@ def run_master_simulation():
                     all_delta_theta_nulls.extend(dtnulls) 
                     all_sinr.append(sinr_val)
                     all_sll.append(sll)
+                    
+                    # --- PLOT SAVING LOGIC ---
+                    if SAVE_PLOTS:
+                        # Create a clean folder hierarchy: plots/SNR_10/Delta_6/
+                        folder_path = os.path.join("plots", f"SNR_{snr}", f"Delta_{delta}")
+                        # Name file logically: e.g., scenario_0042_th0_90.png
+                        filename = os.path.join(folder_path, f"scenario_{idx:04d}_th0_{theta_0}.png")
+                        
+                        save_pattern(angles, P_dB, theta_0, all_int, filename)
                 
+                # --- Statistics Calculation ---
                 dt0_stats = [np.min(all_delta_theta_0), np.max(all_delta_theta_0), np.mean(all_delta_theta_0), np.std(all_delta_theta_0)]
                 dtn_stats = [np.min(all_delta_theta_nulls), np.max(all_delta_theta_nulls), np.mean(all_delta_theta_nulls), np.std(all_delta_theta_nulls)]
                 sinr_stats = [np.min(all_sinr), np.max(all_sinr), np.mean(all_sinr), np.std(all_sinr)]
                 sll_stats = [np.min(all_sll), np.max(all_sll), np.mean(all_sll), np.std(all_sll)]
                 
-                # Format the output block
                 output_block = (
                     f"--- Delta = {delta}° ---\n"
                     f"Δθ0 [deg] : Min: {dt0_stats[0]:.3f} | Max: {dt0_stats[1]:.3f} | Mean: {dt0_stats[2]:.3f} | Std: {dt0_stats[3]:.3f}\n"
@@ -77,19 +96,14 @@ def run_master_simulation():
                     f"SLL  [dB] : Min: {sll_stats[0]:.3f} | Max: {sll_stats[1]:.3f} | Mean: {sll_stats[2]:.3f} | Std: {sll_stats[3]:.3f}\n"
                 )
                 
-                # Print to the console
                 print(output_block)
-                
-                # Write to the file
                 file.write(output_block + "\n")
                 
-            file.write("\n") # Add a blank line between SNR blocks in the file
+            file.write("\n")
                 
-    # Calculate total time and print/save it
     total_time_msg = f"Simulation Complete! Total execution time: {(time.time() - start_time)/60:.1f} minutes."
     print(total_time_msg)
     
-    # Append the final execution time to the file
     with open("simulation_results.txt", "a", encoding="utf-8") as file:
         file.write(total_time_msg + "\n")
 

@@ -6,17 +6,17 @@ The software simulates a 24-element uniform linear antenna array. It calculates 
 
 ## File Architecture
 
-To maintain a clean codebase it is modularized into five distinct Python files:
+To maintain a clean codebase, it is modularized into five distinct Python files:
 
-* **`array_math.py`** *The core RF physics engine.* Handles the generation of steering vectors, construction of the constraint matrix, calculation of the complex weight vector via pseudo-inversion, and computation of the complete 180° radiation pattern.
+* **`array_math.py`**: *The core RF physics engine.* Handles the generation of steering vectors, construction of the constraint matrix, calculation of the complex weight vector via pseudo-inversion, and computation of the complete 180° radiation pattern.
 
-* **`metrics.py`** *The validation and extraction layer.* Uses `scipy` to systematically find local peaks and nulls in the radiation pattern to calculate exact directional deviations ($\Delta\theta$) and the maximum Side Lobe Level (SLL). Also computes the Signal-to-Interference-and-Noise Ratio (SINR).
+* **`metrics.py`**: *The validation and extraction layer.* Uses `scipy` to systematically find local peaks and nulls in the radiation pattern to calculate exact directional deviations ($\Delta\theta$) and the maximum Side Lobe Level (SLL). Also computes the Signal-to-Interference-and-Noise Ratio (SINR).
 
-* **`optimization.py`** *The SLL control algorithm.* Implements an iterative, greedy approach that scans the array pattern for the highest side lobe and dynamically drops "dummy" interferers at those exact angles until the overall SLL floor falls below the -20 dB target.
+* **`optimization.py`**: *The SLL control algorithm.* Implements an iterative, greedy approach that scans the array pattern for the highest side lobe and dynamically drops "dummy" interferers at those exact angles until the overall SLL floor falls below the -20 dB target.
 
-* **`visualization.py`** *The plotting logic.* Isolates the `matplotlib` dependencies. Generates 2D plots of the normalized radiation pattern (in dB), overlaying the target angles, interference locations, and the SLL threshold.
+* **`visualization.py`**: *The headless plotting logic.* Configured to bypass GUI rendering. Generates high-resolution 2D plots of the normalized radiation pattern (in dB) and safely saves them directly to disk to prevent memory leaks during massive batch loops.
 
-* **`main.py`** *The master execution loop.* The entry point for the simulation. It generates the required matrix of test scenarios (sweeping through various SNRs and angular steps $\delta$), runs the optimization algorithm across all permutations, and outputs the required minimum, maximum, mean, and standard deviation statistics for the final report.
+* **`main.py`**: *The master execution loop.* The entry point for the simulation. It generates the required matrix of test scenarios (sweeping through various SNRs and angular steps $\delta$), runs the optimization algorithm across all permutations, manages the `plots/` directory structure, and outputs the final statistical metrics to both the console and a text file.
 
 ## Requirements
 
