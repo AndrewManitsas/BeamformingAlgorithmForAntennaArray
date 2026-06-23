@@ -85,18 +85,17 @@ def generate_scenarios(delta, base_start, max_angle):
     return scenarios
 
 def run_master_simulation():
-    print("Loading parameters from config.csv...")
+    print("Loading parameters from config.csv...\n")
     try:
         cfg = load_config("config.csv")
     except FileNotFoundError:
-        print("Error: config.csv not found! Please create it in the same directory.")
+        print("Error: config.csv not found! Please create it in the same directory.\n")
         return
         
     snr_values = cfg['snr_values']
     delta_values = cfg['delta_values']
     bf_type = cfg['beamformer_type'].upper()
     
-    print(f"Beamforming Algorithm Calculator for Antenna Array -- (v{__version__})\n")
     print(f"Beamforming Algorithm Used: {bf_type} --> Simulation Results\n")
     if SAVE_PLOTS:
         print("WARNING: Plot saving is ENABLED. This will generate thousands of images.")
@@ -174,4 +173,5 @@ def run_master_simulation():
         file.write(total_time_msg + "\n")
 
 if __name__ == "__main__":
+    print(f"Beamforming Algorithm Calculator for Antenna Array -- (v{__version__})\n")
     run_master_simulation()
