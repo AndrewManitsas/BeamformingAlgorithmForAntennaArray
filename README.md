@@ -45,6 +45,53 @@ Inside `main.py`, you can toggle the visual image generation:
 * `SAVE_PLOTS = True`: Generates and saves a `.png` file for every single angular scenario into dynamically created subfolders (e.g., `plots/MVDR/SNR_10/Delta_6/`). *Warning: Increases execution time and consumes disk space.*
 * `SAVE_PLOTS = False`: Bypasses image generation entirely, running strictly the matrix math and statistical extraction for maximum speed.
 
+## Code Flowchart
+
+graph TD
+    %% Inputs
+    Config[\config.csv\] -->|1. Loads Parameters| Main
+
+    %% Master Loop
+    subgraph The Conductor
+        Main[main.py]
+    end
+
+    %% Optimization & Physics
+    subgraph The Core Logic
+        Opt[optimization.py]
+        Math[array_math.py]
+    end
+
+    %% Validation & Plotting
+    subgraph Validation & Output
+        Metrics[metrics.py]
+        Vis[visualization.py]
+    end
+
+    %% Outputs
+    TextLog[\simulation_results.txt\]
+    Plots[\plots/ Directory\]
+
+    %% Execution Path
+    Main -->|2. Passes Scenario Angles & SNR| Opt
+    Opt <-->|3. Requests Weights & Patterns iteratively| Math
+    Opt -->|4. Returns Optimized Weights & Dummies| Main
+    
+    Main -->|5. Passes Final Weights for Grading| Metrics
+    Metrics -->|6. Returns Deviations, SLL, SINR| Main
+    
+    Main -->|7. Passes Data for Headless Plotting| Vis
+    Vis -->|8. Saves .png file to disk| Plots
+    Main -->|9. Writes Min/Max/Mean/Std| TextLog
+
+    %% Styling
+    classDef file fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    classDef logic fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef io fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    
+    class Main,Opt,Math,Metrics,Vis logic;
+    class Config,TextLog,Plots io;
+
 ## Requirements
 
 To run this simulation, you will need Python installed along with the following scientific libraries. Install them via your terminal:
