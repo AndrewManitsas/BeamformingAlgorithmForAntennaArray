@@ -1,0 +1,30 @@
+1. Initialization (main.py ← config.csv)
+The master script begins by reading the CSV file to load the simulation boundaries (SNR sweeps, angle steps δ, beamformer type, and maximum SLL targets).
+It uses these boundaries to generate the exact list of target angles (θ0​) and interferers.
+
+2. The Optimization Handoff (main.py → optimization.py)
+For every single scenario generated, main.py pauses and hands the desired angle, the interference angles,
+and the SNR to optimization.py. It says, "Give me the best possible complex weights for this setup."
+
+3. The Physics Engine Loop (optimization.py ↔ array_math.py)
+This is the heaviest part of the software.
+
+    optimization.py passes the angles to array_math.py.
+
+    array_math.py calculates the steering vectors, builds the constraint or spatial covariance matrices (NSB or MVDR), and returns a radiation pattern.
+
+    optimization.py checks the pattern. If a side lobe is too high, it drops a "dummy" interferer at that exact angle and asks array_math.py to calculate the pattern again.
+    This loops until the SLL target is met.
+
+4. Grading the Results (main.py ↔ metrics.py)
+Once optimization is complete, main.py takes the final weights and pattern and passes them to metrics.py.
+This module acts as the "grader." It uses signal processing libraries to find the exact local peaks and nulls,
+calculates the output SINR, and returns the strict numerical values back to main.py.
+
+5. Logging and Visualization (main.py → visualization.py & Disk)
+Finally, main.py takes all the graded numbers and the raw pattern data:
+
+    It formats the metrics and appends them to simulation_results.txt.
+
+    If SAVE_PLOTS is enabled, it pushes the data to visualization.py, which silently draws the graph,
+    saves it into the dynamically generated plots/ folder hierarchy, and flushes the memory to prepare for the next iteration.
