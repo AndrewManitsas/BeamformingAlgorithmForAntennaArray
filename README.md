@@ -47,7 +47,7 @@ Inside `main.py`, you can toggle the visual image generation:
 
 ## SW Flowchart
 
-![Alt text](CodeFlowchart.png)
+![Alt text](images/CodeFlowchart.png)
 
 ## Requirements
 
