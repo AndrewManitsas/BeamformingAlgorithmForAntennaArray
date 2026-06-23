@@ -45,6 +45,10 @@ Inside `main.py`, you can toggle the visual image generation:
 * `SAVE_PLOTS = True`: Generates and saves a `.png` file for every single angular scenario into dynamically created subfolders (e.g., `plots/MVDR/SNR_10/Delta_6/`). *Warning: Increases execution time and consumes disk space.*
 * `SAVE_PLOTS = False`: Bypasses image generation entirely, running strictly the matrix math and statistical extraction for maximum speed.
 
+## SW Flowchart
+
+![Alt text](CodeFlowchart.png)
+
 ## Requirements
 
 To run this simulation, you will need Python installed along with the following scientific libraries. Install them via your terminal:
