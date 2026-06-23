@@ -34,7 +34,9 @@ from metrics import calculate_sinr, extract_deviations_and_sll
 from optimization import optimize_dummy_interferers
 from visualization import save_pattern
 
-# --- CONFIGURATION ---
+# --- VERSION & CONFIGURATION ---
+__version__ = "1.0.0"
+
 # Set this to False to bypass generating thousands of images
 SAVE_PLOTS = False 
 # ---------------------
@@ -94,7 +96,8 @@ def run_master_simulation():
     delta_values = cfg['delta_values']
     bf_type = cfg['beamformer_type'].upper()
     
-    print(f"Starting Master Simulation using {bf_type} Beamformer...")
+    print(f"Beamforming Algorithm Calculator for Antenna Array -- (v{__version__})\n")
+    print(f"Beamforming Algorithm Used: {bf_type} --> Simulation Results\n")
     if SAVE_PLOTS:
         print("WARNING: Plot saving is ENABLED. This will generate thousands of images.")
         print("Execution will take significantly longer due to disk I/O.\n")
@@ -102,6 +105,7 @@ def run_master_simulation():
     start_time = time.time()
     
     with open("simulation_results.txt", "w", encoding="utf-8") as file:
+        file.write(f"Beamforming Algorithm Calculator for Antenna Array -- (v{__version__})\n")
         file.write(f"Beamforming Algorithm Used: {bf_type} --> Simulation Results\n")
         file.write("================================================\n\n")
         
